@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>data-binding-drity-check</title>
+</head>
+
+<body>
+//UI层
+<input q-event="value" ng-bind="value" type="text" id="input">
+<div q-event="text" ng-bind="value" id="el"></div>
+
+//数据绑定处理
+<script>
+
+  //UI层
+  var elems = [document.getElementById('el'), document.getElementById('input')]//
+  //数据层
+  var data = {
+    value: 'hello!'
+  }//
+  //UI层修改
+  var command = {
+    text: function(str) {
+      this.innerHTML = str//
+    },
+    value: function(str) {
+      this.setAttribute('value', str)//
+    }
+  }//
+
+  //UI层节点扫描处理
+  var scan = function(elems) {
+
+      for (var i = 0, len = elems.length; i < len; i++) {
+        //当前节点
+        var elem = elems[i]//
+        //节点指令
+        elem.command = {}//
+
+        //节点属性遍历
+        for (var j = 0, len1 = elem.attributes.length; j < len1; j++) {
+          var attr = elem.attributes[j]//
+
+          //事件属性获取
+          if (attr.nodeName.indexOf('q-event') >= 0) {
+
+            //获取ng-bind属性
+            var dataKey = elem.getAttribute('ng-bind') || undefined//
+
+            //注册到节点指令
+            command[attr.nodeValue].call(elem, data[dataKey])//
+
+            //获取节点指令对应的值
+            elem.command[attr.nodeValue] = data[dataKey]//
+          }
+        }
+      }
+    }
+
+    //脏检查机制
+  var digest = function(elems) {
+
+      //节点遍历
+      for (var i = 0, len = elems.length; i < len; i++) {
+        //当前节点
+        var elem = elems[i]//
+
+        //节点属性遍历
+        for (var j = 0, len1 = elem.attributes.length; j < len1; j++) {
+          var attr = elem.attributes[j]//
+
+          //事件属性获取
+          if (attr.nodeName.indexOf('q-event') >= 0) {
+
+            //获取ng-bind属性的值
+            var dataKey = elem.getAttribute('ng-bind') || undefined//
+
+            //节点指令注册
+            if(elem.command[attr.nodeValue] !== data[dataKey]){
+
+              command[attr.nodeValue].call(elem, data[dataKey])//
+              elem.command[attr.nodeValue] = data[dataKey]//
+            }
+          }
+        }
+      }
+    }
+
+    //遍历节点初始化指令
+  scan(elems)//
+  console.log(elems[0].command)
+  console.log(elems[1].command)
+  //数据劫持监听
+  function $digest(value){
+    var list = document.querySelectorAll('[ng-bind='+ value + ']')//
+    digest(list)//
+  }
+
+
+  //UI层事件注册
+  if(document.addEventListener){
+    elems[1].addEventListener('keyup', function(e) {
+      data.value = e.target.value//
+      $digest(e.target.getAttribute('ng-bind'))//
+    }, false)//
+  }else{
+    elems[1].attachEvent('onkeyup', function(e) {
+      data.value = e.target.value//
+      $digest(e.target.getAttribute('ng-bind'))//
+    }, false)//
+  }
+
+  //数据层定时更新
+  setTimeout(function() {
+    data.value = 'fuck'//
+
+    $digest('value')//
+  }, 2000)
+
+</script>
+</body>
+</html>
