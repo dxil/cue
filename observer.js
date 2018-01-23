@@ -14,8 +14,8 @@ export default class Observer{
       //遍历keys
     keys.forEach(
     //将key对应的值转换为劫持属性
-    key=>this.convert(key,value[key])
-  )
+      key=>this.convert(key,value[key])
+    )
   }
 
   //转换属性为劫持属性
@@ -27,7 +27,7 @@ export default class Observer{
 //属性转换操作
 export function defineReactive(obj,key,val){
   // 创建订阅器数组
-  var dep = new  Dep()
+  var dep = new Dep()
 
   // val递归遍历
   var childOb = observe(val)
