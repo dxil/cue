@@ -1,4 +1,4 @@
-import Dep from "./dep.js"
+import Dep from "./src/mvvm/dep.js"
 
 //实现消息订阅者
 export default class Watcher{

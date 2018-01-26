@@ -1,5 +1,6 @@
-import Compile from './compile.js'
+import Compile from './src/mvvm/compile.js'
 
-export default function Cue () {
+export default function Cue (options) {
+
   new Compile()
 }
