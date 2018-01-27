@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "dev": "webpack --watch --config build/dev.cue.js"
+  },
+  "dependencies": {
+    "webpack": "^3.10.0"
+  }
+}
