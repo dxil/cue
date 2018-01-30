@@ -1,8 +1,13 @@
 import MVVM from '../mvvm'
+import {
+  log,
+  warn
+} from '../utils'
 
-let Cue = function (options) {
+export default function Cue (options) {
+  log(options)
 
-  console.log(options)
+  this.el = document.querySelector(options.target)
   this.vm = new MVVM(options)
+
 }
-export default Cue
