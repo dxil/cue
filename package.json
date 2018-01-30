@@ -1,8 +1,21 @@
 {
   "scripts": {
-    "dev": "webpack --watch --config build/dev.cue.js"
+    "dev": "webpack --watch --config build/dev.cue.js",
+    "test": "karma start build/karma.unit.js"
   },
   "dependencies": {
+    "karma": "^2.0.0",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-mocha": "^1.3.0",
+    "karma-sourcemap-loader": "^0.3.7",
+    "karma-webpack": "^2.0.9",
+    "mocha": "^5.0.0",
     "webpack": "^3.10.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-es2015": "^6.24.1",
+    "karma-sourcemap-loader": "^0.3.7"
   }
 }
