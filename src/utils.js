@@ -97,7 +97,7 @@ export function extend () {
   let options, copy, name
   let target = arguments[0] || {}, i = 1, deep = false, length = arguments.length
 
-  // get value of deep
+  // get value of deep //todo 缺少deep = true时的拓展 比如 {a: {c:1, d:2}} 和 {a: {e: 3, f: 4}}的合并
   if (isBool(target)) {
     deep = target
     target = arguments[i] || {}
@@ -118,8 +118,27 @@ export function extend () {
   for (; i < length; i++) {
     if ((options = arguments[i]) != null) {
       for (name in options) {
-
+        copy = options[name]
+        if (copy === target) {
+          continue
+        }
+        target[name] = copy
       }
     }
   }
+  return target
+}
+
+export function each (iterator, callback) {
+  if (isArray(iterator)) {
+    for (let i = 0; i < iterator.length; i++) {
+      callback(i, iterator[i])
+    }
+  }
+  if (isObject(iterator)) {
+    for (let key in iterator) {
+      callback(key, iterator(key))
+    }
+  }
+
 }
