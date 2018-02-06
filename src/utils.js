@@ -9,7 +9,7 @@ function typeOf (test, type) {
  * 是否是对象
  * */
 export function isObject (object) {
-  return OP.toString().call(object) === '[object Object]'
+  return OP.toString.call(object) === '[object Object]'
 }
 
 /**
@@ -129,15 +129,25 @@ export function extend () {
   return target
 }
 
-export function each (iterator, callback) {
+export function each (iterator, callback, content) {
+  let ret
+  if (!content) {
+    content = this
+  }
   if (isArray(iterator)) {
     for (let i = 0; i < iterator.length; i++) {
-      callback(i, iterator[i])
+      ret = callback.call(content, i, iterator[i])
+      if (ret) {
+        iterator[i] = ret
+      }
     }
   }
   if (isObject(iterator)) {
     for (let key in iterator) {
-      callback(key, iterator(key))
+      ret = callback.call(content, key, iterator[key])
+      if (ret) {
+        iterator[key] = ret
+      }
     }
   }
 
