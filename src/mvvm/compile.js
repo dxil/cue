@@ -6,6 +6,8 @@ import Observer from './observer.js'
  * 将computed计算属性建立watcher
  *
  * */
-export default function Compile () {
+export default function Compile (options) {
+  let model = options.data
+  let element = options.
   new Observer()
 }
