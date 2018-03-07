@@ -8,6 +8,6 @@ import Observer from './observer.js'
  * */
 export default function Compile (options) {
   let model = options.data
-  let element = options.
+  let element = options.view
   new Observer()
 }
