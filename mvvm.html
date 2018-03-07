@@ -1,0 +1,140 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+<div id="app">
+  <p>{{name}}</p>
+</div>
+</body>
+<script>
+  let currentObserver
+
+  class MVVM {
+    constructor (opts) {
+      let data = opts.data
+      this.init(opts)
+      observer(data)
+      this.compile()
+    }
+    init (opts) {
+      this.$el = document.querySelector(opts.el)
+      this.$data = opts.data
+      this.observers = []
+    }
+    compile () {
+      this.traverse(this.$el)
+    }
+    traverse (node) {
+      if (node.nodeType === 1) {
+        node.childNodes.forEach(childNode => {
+          this.traverse(childNode)
+        })
+      }else if (node.nodeType === 3) {
+        this.renderText(node)
+      }
+    }
+    renderText(node) {
+      let reg = /{{(.+?)}}/g
+      let match
+      while (match = reg.exec(node.nodeValue)) {
+        let raw = match[0]
+        let key = match[1].trim()
+        node.nodeValue = node.nodeValue.replace(raw, this.$data[key])
+        new Observer(this, key, function (oldVal, val) {
+          node.nodeValue = node.nodeValue.replace(oldVal, val)
+        })
+      }
+    }
+  }
+
+  class Observer {
+    constructor (vm, key, cb) {
+      this.subjects = {}
+      this.vm = vm
+      this.key = key
+      this.cb = cb
+      this.value = this.getValue()
+    }
+    update () {
+      let oldValue = this.value
+      let value = this.getValue()
+      if (value !== oldValue) {
+        this.value = value
+        this.cb.bind(this.vm)(oldValue, value)
+      }
+    }
+    getValue () {
+      currentObserver = this
+      let value = this.vm.$data[this.key]
+      currentObserver = null
+      return value
+    }
+  }
+
+  class Depend {
+    constructor () {
+      this.observers = []
+    }
+    addObserver (observer) {
+      this.observers.push(observer)
+    }
+    removerObserver (observer) {
+      let index = this.observers.indexOf(observer)
+      if (!~index) {
+        this.observers.splice(index, 1)
+      }
+    }
+    notify () {
+      this.observers.forEach(observer => {
+        observer.update()
+      })
+    }
+  }
+
+  let mvvm = new MVVM({
+    el: '#app',
+    data: {
+      name: 'hello'
+    }
+  })
+
+  function observer (data) {
+    for (key in data) {
+      if (!data.hasOwnProperty(key)) {
+        return
+      }
+      let val = data[key]
+      let depend = new Depend()
+      Object.defineProperty(data, key, {
+        get: function () {
+          if (currentObserver) {
+            depend.addObserver(currentObserver)
+          }
+          return val
+        },
+        set: function (newVal) {
+          if (newVal !== val) {
+            val = newVal
+            console.log('start notify....')
+            depend.notify()
+          }
+        }
+      })
+      if (Object.prototype.toString.call(key) === '[object Object]') {
+
+      }
+    }
+
+  }
+
+  function parse (opts) {
+    this.$vm = document.querySelector(opts.el)
+  }
+
+//  setInterval(function(){
+//    mvvm.$data.name += '!'
+//  }, 1000)
+</script>
+</html>
