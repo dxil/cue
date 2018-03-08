@@ -59,7 +59,7 @@
     }
     update () {
       let oldValue = this.value
-      let value = this.getValue()
+      let value = this.vm.$data[this.key]
       if (value !== oldValue) {
         this.value = value
         this.cb.bind(this.vm)(oldValue, value)
