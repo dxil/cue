@@ -25,6 +25,10 @@
       this.cb.call(this.vm, this.value, value)
       this.value = value
     }
+    addDepend (depend) {
+      this.depends.push(depend)
+      depend.addWatcher(this)
+    }
     beforeGet () {
       Depend.watcher = this
     }
@@ -77,7 +81,7 @@
             enumerable: true,
             get: function () {
               if (Depend.watcher) {
-                depend.addWatcher(Depend.watcher)
+                Depend.watcher.addDepend(depend)
               }
               return val
             },
