@@ -1,0 +1,187 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+<div id="app">
+  <input v-model="name"/>
+  <p>{{name}}</p>
+</div>
+</body>
+<script>
+  let currentObserver
+
+  // 主题
+  class Depend {
+    constructor () {
+      this.watchers = []
+    }
+    addWatcher (watcher) {
+      this.watchers.push(watcher)
+    }
+    removeWatcher (watcher) {
+      let index = this.watchers.indexOf(watcher)
+      if (!~index) {
+        this.watchers.splice(index, 1)
+      }
+    }
+    notify () {
+      this.watchers.forEach(function (watcher) {
+        watcher.update()
+      })
+    }
+    dep () {
+      console.log(Depend.watcher)
+      if (Depend.watcher) {
+        Depend.watcher.addDepend(this)
+      }
+    }
+  }
+  Depend.watcher = null
+
+  // 观察者
+  class Watcher {
+    constructor (vm, key, cb) {
+      this.depends = []
+      this.vm = vm
+      this.key = key
+      this.cb = cb
+      this.value = this.getValue()
+    }
+    update () {
+      let oldValue = this.value
+      let value = this.getValue()
+      if (value !== oldValue) {
+        this.value = value
+        this.cb.bind(this.vm)(oldValue, value)
+      }
+    }
+    getValue () {
+//      debugger
+      Depend.watcher = this
+      console.log(Depend.watcher)
+      let value = this.vm.$data[this.key]
+      Depend.watcher = null
+      return value
+    }
+    addDepend (depend) {
+      depend.addWatcher(this)
+    }
+  }
+
+  class Compile {
+    constructor (vm) {
+      this.vm = vm
+      this.node = vm.$el
+      this.compile()
+    }
+    compile () {
+      this.traverse(this.node)
+    }
+    traverse (node) {
+      if (node.nodeType === 1) {
+        this.compileNode(node)
+        node.childNodes.forEach(childNode => {
+          this.traverse(childNode)
+        })
+      }else if (node.nodeType === 3) {
+        this.renderText(node)
+      }
+    }
+    renderText (node) {
+      let reg = /{{(.+?)}}/g
+      let match
+      while (match = reg.exec(node.nodeValue)) {
+        let raw = match[0]
+        let key = match[1].trim()
+        node.nodeValue = node.nodeValue.replace(raw, this.vm.$data[key])
+        new Watcher(this.vm, key, function (oldVal, val) {
+          node.nodeValue = node.nodeValue.replace(oldVal, val)
+        })
+      }
+    }
+    compileNode (node) {
+      let attrs = [...node.attributes]
+      attrs.forEach(attr => {
+        if (this.isDirective(attr.name)) {
+          let key = attr.value
+          node.value = this.vm.$data[key]
+          new Watcher(this.vm, key, function (oldValue, newValue) {
+            node.value = newValue
+          })
+          node.oninput = (e) => {
+            this.vm.$data[key] = e.target.value
+          }
+        }
+      })
+    }
+    isDirective (attr) {
+      return attr === 'v-model'
+    }
+  }
+
+  function observer (data) {
+    if (!data || !isObject(data)) return
+    for (let key in data) {
+      if (!data.hasOwnProperty(key)) return
+      let val = data[key]
+      let depend = new Depend()
+      Object.defineProperty(data, key, {
+        enumerable: true,
+        configurable: true,
+        get: function () {
+          if (Depend.watcher) {
+            depend.dep()
+          }
+          return val
+        },
+        set: function (newVal) {
+          if (newVal !== val) {
+            val = newVal
+            console.log('start notify....')
+            depend.notify()
+          }
+        }
+      })
+      if (isObject(key)) {
+        observer(key)
+      }
+    }
+
+  }
+
+  class MVVM {
+    constructor (opts) {
+      let data = opts.data
+      this.init(opts)
+      observer(data)
+      new Compile(this)
+    }
+    init (opts) {
+      this.$el = document.querySelector(opts.el)
+      this.$data = opts.data
+      this.observers = []
+    }
+  }
+
+  function parse (opts) {
+    this.$vm = document.querySelector(opts.el)
+  }
+
+  function isObject (obj) {
+    return Object.prototype.toString.call(obj) === '[object Object]'
+  }
+
+  let mvvm = new MVVM({
+    el: '#app',
+    data: {
+      name: 'hello'
+    }
+  })
+
+  //  setInterval(function(){
+  //    mvvm.$data.name += '!'
+  //  }, 1000)
+</script>
+</html>
