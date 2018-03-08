@@ -1,0 +1,197 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>重新整理代码</title>
+</head>
+<body>
+  <div id="app">
+    <input v-model="name" type="text">
+    <p>我是{{name}}，今年{{age}}岁</p>
+    <button v-on:click="sayHi">打招呼</button>
+  </div>
+</body>
+<script>
+  class Watcher {
+    constructor (vm, key, cb) {
+      this.depends = []
+      this.vm = vm
+      this.key = key
+      this.cb = cb
+      this.value = this.getValue()
+    }
+    update () {
+      let value = this.vm.$data[this.key]
+      if (this.value === value) return
+      this.cb.call(this.vm, this.value, value)
+      this.value = value
+    }
+    beforeGet () {
+      Depend.watcher = this
+    }
+    getValue () {
+      this.beforeGet()
+      let value = this.vm.$data[this.key]
+      this.afterGet()
+      return value
+    }
+    afterGet () {
+      Depend.watcher = null
+    }
+  }
+
+  class Depend {
+    constructor () {
+      this.watchers = []
+    }
+    addWatcher (watcher) {
+      this.watchers.push(watcher)
+    }
+    removeWatcher (watcher) {
+      let index = this.watchers.indexOf(watcher)
+      if (!~index) {
+        this.watchers.splice(index, 1)
+      }
+    }
+    notify () {
+      this.watchers.forEach(watcher => {
+        watcher.update()
+      })
+    }
+  }
+
+  Depend.watcher = null
+
+  class Observer {
+    constructor (data) {
+      this.$data = data
+      this.observer()
+    }
+    observer () {
+      if (!this.$data || !isObject(this.$data)) return
+      for (let key in this.$data) {
+        if (this.$data.hasOwnProperty(key)) {
+          let depend = new Depend()
+          let val = this.$data[key]
+          Object.defineProperty(this.$data, key, {
+            configurable: true,
+            enumerable: true,
+            get: function () {
+              if (Depend.watcher) {
+                depend.addWatcher(Depend.watcher)
+              }
+              return val
+            },
+            set: function (newVal) {
+              if (newVal === val) return
+              val = newVal
+              depend.notify()
+            }
+          })
+        }
+        if (isObject(key)) {
+          this.observer(key)
+        }
+      }
+    }
+  }
+  class Compile {
+    constructor (vm) {
+      this.vm = vm
+      new Observer(vm.$data)
+      this.compile()
+    }
+    compile () {
+      let node = this.vm.$el
+      this.traverse(node)
+    }
+    traverse (node) {
+      if (node.nodeType === 1) {
+        this.compileNode(node)
+        node.childNodes.forEach(children => {
+          this.traverse(children)
+        })
+      }else if (node.nodeType === 3) {
+        this.renderText(node)
+      }
+    }
+    compileNode(node) {
+      let attrs = [...node.attributes]
+      attrs.forEach(attr => {
+        if (this.isModelDirective(attr.name)) {
+         this.bindModel(node, attr)
+        }else if (this.isEventDirective(attr.name)) {
+          this.bindEvent(node, attr)
+        }
+      })
+    }
+    renderText(node) {
+      let reg = /{{(.+?)}}/g
+      let match
+      while ((match = reg.exec(node.nodeValue)) != null) {
+        let raw = match[0]
+        let key = match[1].trim()
+        reg.lastIndex = match.index
+        node.nodeValue = node.nodeValue.replace(raw, this.vm.$data[key])
+        new Watcher (this.vm, key, function (oldVal, newVal) {
+          node.nodeValue = node.nodeValue.replace(oldVal, newVal)
+        })
+      }
+    }
+    isModelDirective (attr) {
+      return attr === 'v-model'
+    }
+    isEventDirective (attr) {
+      return attr.indexOf('v-on') === 0
+    }
+    bindModel (node, attr) {
+      let key = attr.value
+      node.value = this.vm.$data[key]
+      new Watcher(this.vm, key, function (oldVal, newVal) {
+        node.nodeValue = newVal
+      })
+      node.oninput = (e) => {
+        this.vm.$data[key] = e.target.value
+      }
+    }
+    bindEvent (node, attr) {
+      let event = attr.name.substr(5)
+      let methodName = attr.value
+      node.addEventListener(event, this.vm.$data[methodName])
+    }
+
+  }
+
+  class MVVM {
+    constructor (opts) {
+      this.init(opts)
+      new Compile(this)
+    }
+    init (opts) {
+      this.$data = opts.data || {}
+      this.$el = document.querySelector(opts.el)
+      console.log(this)
+      Object.keys(opts.methods).forEach(key => {
+        this.$data[key] = opts.methods[key].bind(opts.data)
+      })
+    }
+  }
+
+  function isObject(obj) {
+    return Object.prototype.toString.call(obj) === '[object Object]'
+  }
+
+  let mvvm = new MVVM({
+    el: '#app',
+    data: {
+      name: 'heh',
+      age: 12
+    },
+    methods: {
+      sayHi () {
+        console.log(`hi,${this.name}`)
+      }
+    }
+  })
+</script>
+</html>
+
