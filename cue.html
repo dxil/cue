@@ -1,0 +1,192 @@
+<html>
+<meta charset="utf-8">
+<title>研究mvvm原理</title>
+<body>
+  <div id="app">
+    <input type="text" v-model="name">
+    <p>hello， {{name}}，已经{{age}}岁了</p>
+    <button v-on:click="sayHi"></button>
+  </div>
+</body>
+<script>
+
+  class Depend {
+    constructor () {
+      this.watchers = []
+    }
+    addWatcher (watcher) {
+      this.watchers.push(watcher)
+    }
+    removeWatcher (watcher) {
+      let index = this.watchers.indexOf(watcher)
+      if (!~index) {
+        this.watchers.splice(index, 1)
+      }
+    }
+    notify () {
+      this.watchers.forEach(watcher => {
+        watcher.update()
+      })
+    }
+  }
+  Depend.watcher = null
+
+  class Watcher {
+    constructor (vm, key, cb) {
+      this.vm = vm
+      this.key = key
+      this.cb = cb
+      this.value = this.getValue()
+    }
+    update () {
+      let oldValue = this.value
+      let newValue = this.vm.$data[this.key]
+      if (newValue === oldValue) return
+      this.cb.call(this.vm, oldValue, newValue)
+      this.value = newValue
+    }
+    getValue () {
+      Depend.watcher = this
+      let value = this.vm.$data[this.key]
+      Depend.watcher = null
+      return value
+    }
+  }
+
+  class Observer {
+    constructor (data) {
+      this.$data = data
+      this.observer()
+    }
+    observer () {
+      let data = this.$data
+      if (!isObject(data)) return
+      Object.keys(data).forEach(key => {
+        let val = this.$data[key]
+        let dep = new Depend()
+        Object.defineProperty(data, key , {
+          configurable: true,
+          enumerable: true,
+          get: function () {
+            if (Depend.watcher) {
+              dep.addWatcher(Depend.watcher)
+            }
+            return val
+          },
+          set: function (newVal) {
+            if (newVal !== val) {
+              val = newVal
+              dep.notify()
+            }
+          }
+        })
+        if (isObject(key)) {
+          this.observer(key)
+        }
+      })
+    }
+  }
+
+  class Compile {
+    constructor (vm) {
+      this.vm = vm
+      new Observer(vm.$data)
+      this.compile()
+    }
+    compile () {
+      let node = this.vm.$el
+      this.traverse(node)
+    }
+    traverse (node) {
+      if (node.nodeType === 1) {
+        this.compileNode(node)
+        node.childNodes.forEach(child => {
+          this.traverse(child)
+        })
+      }else if (node.nodeType === 3) {
+        this.renderText(node)
+      }
+    }
+    compileNode (node) {
+      let attrs = [...node.attributes] || []
+      attrs.forEach(attr => {
+        if (this.isModelDirective(attr.name)) {
+          this.bindModel(node, attr)
+        }else if (this.isEventDirective(attr.name)) {
+          this.bindEvent(node, attr)
+        }
+      })
+    }
+    isModelDirective (attrName) {
+      return attrName === 'v-model'
+    }
+    isEventDirective (attrName) {
+      return attrName.indexOf('v-on') === 0
+    }
+    bindModel (node, attr) {
+      let key = attr.value
+      node.value = this.vm.$data[key]
+      new Watcher(this.vm, key, function (oldVal, newVal) {
+        node.value = newVal
+      })
+      node.oninput = (e) => {
+        this.vm.$data[key] = e.target.value
+      }
+    }
+    bindEvent (node, attr) {
+      let event = attr.name.substr(5)
+      let methodName = attr.value
+      node.addEventListener(event, this.vm.$data[methodName])
+    }
+    renderText (node) {
+      let reg = /{{(.+?)}}/g
+      let match
+      while ((match = reg.exec(node.nodeValue)) != null) {
+        let raw = match[0]
+        let key = match[1].trim()
+        reg.lastIndex = match.index
+        node.nodeValue = node.nodeValue.replace(raw, this.vm.$data[key])
+        new Watcher(this.vm, key, function (oldVal, newVal) {
+          node.nodeValue = node.nodeValue.replace(oldVal, newVal)
+        })
+      }
+    }
+  }
+
+  class Cue {
+    constructor (options) {
+      this.$options = options
+      this.$el = document.querySelector(options.el)
+      this.init(options)
+      new Compile(this)
+    }
+    init (options) {
+      this.$data = options.data || {}
+      Object.keys(options.methods).forEach(key => {
+        this.$data[key] = options.methods[key].bind(options.data)
+      })
+    }
+  }
+
+  let cue = new Cue({
+    el: '#app',
+    data: {
+      name: 'cuzz',
+      age: 18
+    },
+    methods: {
+      sayHi () {
+        alert(`haha，${this.name}`)
+      }
+    }
+  })
+
+  setInterval(function () {
+    cue.$data.age += 1
+  },1000)
+
+  function isObject(obj) {
+    return Object.prototype.toString.call(obj) === '[object Object]'
+  }
+</script>
+</html>
